@@ -1,0 +1,24 @@
+<phpunit backupGlobals="false"
+         backupStaticAttributes="false"
+        colors="true"
+        bootstrap="bootstrap.php"
+        cacheTokens="false"
+        convertErrorsToExceptions="true"
+        convertNoticesToExceptions="true"
+        convertWarningsToExceptions="true"
+        forceCoversAnnotation="false"
+        mapTestClassNameToCoveredClassName="false"
+        processIsolation="false"
+        stopOnError="false"
+        stopOnFailure="false"
+        stopOnIncomplete="false"
+        stopOnSkipped="false"
+        strict="false"
+        verbose="false">
+
+    <testsuites>
+        <testsuite name="My Test Suite">
+            <directory>src/DoctrineTest/Tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
