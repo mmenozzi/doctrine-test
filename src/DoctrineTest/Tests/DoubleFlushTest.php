@@ -27,6 +27,7 @@ class DoubleFlushTest extends \PHPUnit_Framework_TestCase
         $this->conn = $conn;
         $this->config = $config;
         $this->initEntityManager();
+        $this->recreateSchema();
     }
 
     private function initEntityManager()
@@ -34,24 +35,79 @@ class DoubleFlushTest extends \PHPUnit_Framework_TestCase
         $this->entityManager = EntityManager::create($this->conn, $this->config);
     }
 
-    public function testDoubleFlush()
+    private function recreateSchema()
     {
         $metadatas = $this->entityManager->getMetadataFactory()->getAllMetadata();
-
         $schemaTool = new SchemaTool($this->entityManager);
         $schemaTool->dropDatabase();
         $schemaTool->createSchema($metadatas);
+    }
 
-        $purchasedServicesPackage = $this->createNewPurchasedServicesPackage($this->entityManager);
+    public function testSingleFlush()
+    {
 
+        // We create an Order with related PurchasedServicesPackage that is related with 2 PurchasedService.
         $order = new \DoctrineTest\Entity\Order();
         $order->setName('My ORDER');
+
+        $purchasedServicesPackage = $this->createNewPurchasedServicesPackage($this->entityManager);
+        $order->setPurchasedServicesPackage($purchasedServicesPackage);
+
+        $this->entityManager->persist($order);
+        $this->entityManager->flush();
+
+        // So, we assert that there is only one PurchasedServicesPackage and 2 PurchasedService.
+        $this->assertCount(
+            1,
+            $this->entityManager->getRepository('DoctrineTest\Entity\PurchasedServicesPackage')->findAll()
+        );
+        $this->assertCount(
+            2,
+            $this->entityManager->getRepository('DoctrineTest\Entity\PurchasedService')->findAll()
+        );
+
+        // Re-init of EntityManager is needed to simulate, for example, another HTTP request.
+        $this->entityManager->close();
+        $this->initEntityManager();
+
+        // Now we load previously persisted Order and associate it with a new PurchasedServicesPackage with 2 new
+        // PurchasedService.
+        $order = $this->entityManager->getRepository('DoctrineTest\Entity\Order')->find(1);
+
+        $purchasedServicesPackage = $this->createNewPurchasedServicesPackage($this->entityManager);
+        $order->setPurchasedServicesPackage($purchasedServicesPackage);
+
+        $this->entityManager->persist($order);
+        $this->entityManager->flush();
+
+        // We assert again that there is only one PurchasedServicesPackage and 2 PurchasedService. This is because
+        // we have orphanRemoval on Order::purchased_services_package and cascade="remove" on
+        // PurchasedServicesPackage::services.
+        $this->assertCount(
+            1,
+            $this->entityManager->getRepository('DoctrineTest\Entity\PurchasedServicesPackage')->findAll()
+        );
+        $this->assertCount(
+            2,
+            $this->entityManager->getRepository('DoctrineTest\Entity\PurchasedService')->findAll()
+        );
+    }
+
+    public function testDoubleFlush()
+    {
+        // In this test we do exactly the same thing of testSingleFlush. The only difference is that we call two times
+        // $this->entityManager->flush();
+        $order = new \DoctrineTest\Entity\Order();
+        $order->setName('My ORDER');
+
+        $purchasedServicesPackage = $this->createNewPurchasedServicesPackage($this->entityManager);
         $order->setPurchasedServicesPackage($purchasedServicesPackage);
 
         $this->entityManager->persist($order);
         $this->entityManager->flush();
         $this->entityManager->flush();
 
+        // The first time there is no problem. These assetions are green.
         $this->assertCount(
             1,
             $this->entityManager->getRepository('DoctrineTest\Entity\PurchasedServicesPackage')->findAll()
@@ -72,8 +128,10 @@ class DoubleFlushTest extends \PHPUnit_Framework_TestCase
 
         $this->entityManager->persist($order);
         $this->entityManager->flush();
-        $this->entityManager->flush();
+        $this->entityManager->flush(); // <--- This is the problem!
 
+        // With a second flush here something in orphanRemoval doesn't work and we have 2 PurchasedServicesPackage
+        // and 4 PurchasedService!
         $this->assertCount(
             1,
             $this->entityManager->getRepository('DoctrineTest\Entity\PurchasedServicesPackage')->findAll()
