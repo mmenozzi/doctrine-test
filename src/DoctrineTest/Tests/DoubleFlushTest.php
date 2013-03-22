@@ -50,7 +50,7 @@ class DoubleFlushTest extends \PHPUnit_Framework_TestCase
         $order = new \DoctrineTest\Entity\Order();
         $order->setName('My ORDER');
 
-        $purchasedServicesPackage = $this->createNewPurchasedServicesPackage($this->entityManager);
+        $purchasedServicesPackage = $this->createNewPurchasedServicesPackage();
         $order->setPurchasedServicesPackage($purchasedServicesPackage);
 
         $this->entityManager->persist($order);
@@ -100,7 +100,7 @@ class DoubleFlushTest extends \PHPUnit_Framework_TestCase
         $order = new \DoctrineTest\Entity\Order();
         $order->setName('My ORDER');
 
-        $purchasedServicesPackage = $this->createNewPurchasedServicesPackage($this->entityManager);
+        $purchasedServicesPackage = $this->createNewPurchasedServicesPackage();
         $order->setPurchasedServicesPackage($purchasedServicesPackage);
 
         $this->entityManager->persist($order);
